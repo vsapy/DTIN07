@@ -1,2 +1,2 @@
 # VSAPIKE
-Sparse Vector Symbolic Architcture using Spiking Neural Networks
+Sparse Vector Symbolic Architecture using Spiking Neural Networks
