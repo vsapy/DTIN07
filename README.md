@@ -10,7 +10,7 @@ Sparse Vector Symbolic Architecture using Spiking Neural Networks
     3. python -m ipykernel install --user --name=EnvName
     4. jupyter notebook (start jupyter)
     5. Navigate to the notebook
-    6. When starting the notebook for the first time selct your env as the kernel. 
+    6. When starting the notebook for the first time select your env as the kernel. 
        If you fail to do this jupyter will likely not be able to find the brian2 modules. 
        This can be fixed using the jupyter menu: kernel->change kernel.
 
