@@ -70,13 +70,14 @@ Role_matrix = P_matrix[::2]
 Val_matrix = P_matrix[1::2]
 
 print(P_matrix)
-#print(P_matrix)
+
+# Demonstration of 'phase' binding
+print(f"\nShowing role*filler bindings for target column {target_neuron}\n")
 for n in range(0,2*Num_bound,2):
-    print(P_matrix[n][target_neuron])
-    print(P_matrix[n+1][target_neuron])
-    print((P_matrix[n][target_neuron]+P_matrix[n+1][target_neuron]) % bits_per_slot)
+    print(f"\t{P_matrix[n][target_neuron]}+{P_matrix[n+1][target_neuron]}="
+          f"{P_matrix[n][target_neuron]+P_matrix[n+1][target_neuron]} %"
+          f" {bits_per_slot} = {(P_matrix[n][target_neuron]+P_matrix[n+1][target_neuron])%bits_per_slot}")
     print()
-print()
 
 
 #--------------------------------------------------------------------------------------------------------------
@@ -102,8 +103,6 @@ for n in range(0, Num_bound):
         filler_pos = Val_matrix[n][s]  # Position of the set bit in this value vector for this slot
         b = (filler_pos+role_pos) % bits_per_slot  # Get new 'phase' (bit position) to set in the bound vector's slot
         s_bound[s][b] = rand()
-
-#make s_bound sparse using the argmax function which finds the bit position with the highest random value.
 
 # Make s_bound sparse using the argmax function which finds the bit position with the highest random value.
 np.set_printoptions(threshold=24)
