@@ -47,10 +47,15 @@ def visualise_connectivity(S):
 # operation which compares the unbound vector with all the memory vectors to find the best match.
 # The sparse bound vector resulting from net1 is passed to net2 to initiate the unbinding.
 
-slots_per_vector = 100 # This is the number of neurons used to represent a vector
-bits_per_slot = 100  # This is the number of bit positions
-mem_size = 1000  # The number of vectors against which the resulting unbound vector is compared
-Num_bound = 4  # The number of vectors that are to be bound
+# Init base vars
+show_bound_vecs_slot_detail = True
+
+# slots_per_vector = 100 # This is the number of neurons used to represent a vector
+# bits_per_slot = 100  # This is the number of bit positions
+slots_per_vector = 512 # This is the number of neurons used to represent a vector
+bits_per_slot = 32 # This is the number of bit positions
+mem_size = 24  # The number of vectors against which the resulting unbound vector is compared
+Num_bound = 8  # The number of vectors that are to be bound
 input_delay = bits_per_slot  # Time delay between adding cyclically shifted vectors to construct the bound vector is set to 'bits' milliseconds.
 
 # NB all timings use milliseconds and we can use a random seed if required.
@@ -104,6 +109,23 @@ for n in range(0, Num_bound):
         b = (filler_pos+role_pos) % bits_per_slot  # Get new 'phase' (bit position) to set in the bound vector's slot
         s_bound[s][b] = rand()
 
+if show_bound_vecs_slot_detail:
+    np.set_printoptions(formatter={'int':lambda x: f"{x:2d}"})
+    print()
+    if bits_per_slot > 24:
+        # Fancy formating for slots_per_vector that are longer than 24 bits_per_slot - shows start and end of slot values.
+        for kk in range(slots_per_vector):
+            print(f"slot[{kk:2d}]:"
+                  f"{((s_bound[kk]*100).astype(int))[:12]} ... {((s_bound[kk]*100).astype(int))[-12:]}, "
+                  f"Argmax bit pos=[{np.argmax(s_bound[kk])}]")
+    else:
+        for kk in range(slots_per_vector):
+            print(f"slot[{kk:2d}]:"
+                  f"{((s_bound[kk]*100).astype(int))}, "
+                  f"Argmax bit pos=[{np.argmax(s_bound[kk])}]")
+
+    np.set_printoptions()
+
 # Make s_bound sparse using the argmax function which finds the bit position with the highest random value.
 np.set_printoptions(threshold=24)
 np.set_printoptions(edgeitems=11)
@@ -115,29 +137,43 @@ print(sparse_bound)
 print()
 np.set_printoptions()
 
-
+######################################################################################################
+#
+# # Perform the unbinding
+#
 #Unbind the vector sparse_bound vector and compare with each of the vectors in the P_matrix couting the
 #number of slots that have matching bit positions. This gives the number of spikes that should line up 
 #in the clean up memory operation.
 
-min_match=slots_per_vector
-for n in range(0,2*Num_bound,2):    
-    for m in range(0,2*Num_bound,2):
-        match=0
-        for s in range(0, slots_per_vector):
-            role_pos = P_matrix[n][s]
-            unbound_filler_pos = (sparse_bound[s]-role_pos)%(bits_per_slot)
-            if P_matrix[m+1][s] == unbound_filler_pos:
-                match +=1
-        if n==m:
-            print()
-            print(n,m,match)
-            if match<=min_match:
-                    min_match = match
-        #When we print the maximum value of match should occur when m=n
+hd_threshold = 0.1
+results_set = []
+results = None
+miss_matches = []
+for nn in range(0, len(Role_matrix)):
+    # for pvec in P_matrix:
+    pvec = Role_matrix[nn]
+    results = []
+    for test_vec in Val_matrix:
+        unbound_vals = np.array([(sparse_bound[ss] - pvec[ss]) % bits_per_slot for ss in range(0, slots_per_vector)])
+        match = np.count_nonzero(unbound_vals == test_vec)
+        results.append(match)
 
-print('Min_match=',min_match)
+    win_indx = np.argmax(results)
+    max_count = np.max(results)
+    hd = max(results) / slots_per_vector
+    # print(nn, end=' ')
+    if hd > hd_threshold:
+        print(f"Role_vec_idx[{nn}], Val_match_idx[{win_indx:2d}]:  {results}")
+    else:
+        # store the a failed match
+        miss_matches.append((nn, win_indx, results))
 
+    results_set.append(results)
+print()
+
+print("\nShowing failed matches:")
+for fm in miss_matches:
+    print(f"Role_vec_idx[{fm[0]}], Val_match_idx[{fm[1]:2d}]:  {fm[2]}")
 
 # Generate the time delay data_matrix from the so that the input vector time delay in each slot plus the delay matrix 
 # line up at the number of bits per slot (e.g. a time delay in slot 0 of the input vector of say 10 will have a corresponding delay of
