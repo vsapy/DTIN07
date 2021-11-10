@@ -80,39 +80,43 @@ print()
 
 
 #--------------------------------------------------------------------------------------------------------------
-#This section of the code computes the theoretical values for the sparse vector (which can then be compared with
-# the output of the net1 neuromorphic circuit. It then computes the expected number of bits that will align in the
-# clean-up memory operation (which can then be compared with the net2 neuromorphic circuit output).
-
-
-#Create sparse bound vector (s_bound) of zeros
-s_bound=[]
-for s in range(0, slots_per_vector):
-    s_bound.append(np.zeros(bits_per_slot))
-print()
-#Create sparse representation of the bound vector
-#We take pairs of vector and bind them together and in each slot and then store a random
-#value between 0 and 1.0 in the slot (this will be used to select just one bit when we create 
+#
+# Theoretical calc
+#
+# This section of the code computes the theoretical values for the sparse vector (which can then be compared with
+# the output of the net1 neuromorphic circuit. It then computes the expected number of bits_per_slot that will align
+# in the clean-up memory operation (which can then be compared with the net2 neuromorphic circuit output).
+#
+# We take pairs of vector and bind them together and in each slot and then store a random
+# value between 0 and 1.0 in the slot (this will be used to select just one bit when we create
 # the sparse vector)
 
+# Create sparse representation of the bound vector
+# Init sparse bound vector (s_bound) with zeros
+s_bound = np.zeros((slots_per_vector, bits_per_slot))  # Create a slotted vector with
 
-for n in range(0,2*Num_bound,2):
-    for s in range(0, slots_per_vector):
-        role_pos = P_matrix[n][s]
-        filler_pos = P_matrix[n+1][s]
-        b = (filler_pos+role_pos)%(bits_per_slot)
-        s_bound[s][b] =rand()
+# Do the binding
+for n in range(0, Num_bound):
+    for s in range(0, slots_per_vector):  # For each slot
+        role_pos = Role_matrix[n][s]   # Position of the set bit in this role vector for this slot
+        filler_pos = Val_matrix[n][s]  # Position of the set bit in this value vector for this slot
+        b = (filler_pos+role_pos) % bits_per_slot  # Get new 'phase' (bit position) to set in the bound vector's slot
+        s_bound[s][b] = rand()
 
 #make s_bound sparse using the argmax function which finds the bit position with the highest random value.
 
-sparse_bound=[]
-for s in range(0, slots_per_vector):
-    sparse_bound.append(np.argmax(s_bound[s]))   
+# Make s_bound sparse using the argmax function which finds the bit position with the highest random value.
+np.set_printoptions(threshold=24)
+np.set_printoptions(edgeitems=11)
+print("\nResultant Sparse vector, value indicates 'SET' bit position in each slot. "
+      "\n(Note, a value of '0' means bit zero is set).\n")
 
-
-print()
+sparse_bound = np.array([np.argmax(s_bound[s]) for s in range(0,slots_per_vector)])
 print(sparse_bound)
 print()
+np.set_printoptions()
+
+
 #Unbind the vector sparse_bound vector and compare with each of the vectors in the P_matrix couting the
 #number of slots that have matching bit positions. This gives the number of spikes that should line up 
 #in the clean up memory operation.
