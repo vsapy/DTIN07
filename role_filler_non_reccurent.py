@@ -47,30 +47,34 @@ def visualise_connectivity(S):
 # operation which compares the unbound vector with all the memory vectors to find the best match.
 # The sparse bound vector resulting from net1 is passed to net2 to initiate the unbinding.
 
-slots = 100 # This is the number of neurons used to represent a vector
-bits = 100 # This is the number of bit positions
-mem_size = 1000 # The number of vectors against which the resulting unbound vector is compared
-Num_bound = 4 # The number of vectors that are to be bound
-input_delay = bits # Time delay between adding cyclically shifted vectors to construct the bound vector is set to 'bits' milliseconds.
+slots_per_vector = 100 # This is the number of neurons used to represent a vector
+bits_per_slot = 100  # This is the number of bit positions
+mem_size = 1000  # The number of vectors against which the resulting unbound vector is compared
+Num_bound = 4  # The number of vectors that are to be bound
+input_delay = bits_per_slot  # Time delay between adding cyclically shifted vectors to construct the bound vector is set to 'bits' milliseconds.
 
-#NB all timings use milliseconds and we can use a random seed if required.
-#np.random.seed(54321)
+# NB all timings use milliseconds and we can use a random seed if required.
+# np.random.seed(54321)
 
 target_neuron = 1
-y_low=target_neuron-1 # This is used to select the lowest index of the range of neurons that are to be displayed
-y_high=target_neuron+1 # This is used to select the highest index of the range of neurons that are to be displayed
+y_low=target_neuron-1  # This is used to select the lowest index of the range of neurons that are to be displayed
+y_high=target_neuron+1  # This is used to select the highest index of the range of neurons that are to be displayed
 
-delta = (2*Num_bound+2)*bits #This determins the time period over which the Brian2 simulation is to be run.
+delta = (2*Num_bound+2) * bits_per_slot  # This determins the time period over which the Brian2 simulation is to be run.
 
 # Generate a random matrix (P_matrix) which represents all of the sparse vectors that are to be used.
 # This matrix has columns equal to the number of slots in each vector with the number of rows equal to the memory size (mem_size)
 
-P_matrix = np.random.randint(0, bits, size=(mem_size,slots))
+P_matrix = np.random.randint(0, bits_per_slot, size=(mem_size,slots_per_vector))
+Role_matrix = P_matrix[::2]
+Val_matrix = P_matrix[1::2]
+
+print(P_matrix)
 #print(P_matrix)
 for n in range(0,2*Num_bound,2):
     print(P_matrix[n][target_neuron])
     print(P_matrix[n+1][target_neuron])
-    print((P_matrix[n][target_neuron]+P_matrix[n+1][target_neuron])%bits)
+    print((P_matrix[n][target_neuron]+P_matrix[n+1][target_neuron]) % bits_per_slot)
     print()
 print()
 
@@ -83,8 +87,8 @@ print()
 
 #Create sparse bound vector (s_bound) of zeros
 s_bound=[]
-for s in range(0,slots):
-    s_bound.append(np.zeros(bits))
+for s in range(0, slots_per_vector):
+    s_bound.append(np.zeros(bits_per_slot))
 print()
 #Create sparse representation of the bound vector
 #We take pairs of vector and bind them together and in each slot and then store a random
@@ -93,16 +97,16 @@ print()
 
 
 for n in range(0,2*Num_bound,2):
-    for s in range(0,slots): 
+    for s in range(0, slots_per_vector):
         role_pos = P_matrix[n][s]
         filler_pos = P_matrix[n+1][s]
-        b = (filler_pos+role_pos)%(bits)   
+        b = (filler_pos+role_pos)%(bits_per_slot)
         s_bound[s][b] =rand()
 
 #make s_bound sparse using the argmax function which finds the bit position with the highest random value.
 
 sparse_bound=[]
-for s in range(0,slots):
+for s in range(0, slots_per_vector):
     sparse_bound.append(np.argmax(s_bound[s]))   
 
 
@@ -113,13 +117,13 @@ print()
 #number of slots that have matching bit positions. This gives the number of spikes that should line up 
 #in the clean up memory operation.
 
-min_match=slots
+min_match=slots_per_vector
 for n in range(0,2*Num_bound,2):    
     for m in range(0,2*Num_bound,2):
         match=0
-        for s in range(0,slots):
+        for s in range(0, slots_per_vector):
             role_pos = P_matrix[n][s]
-            unbound_filler_pos = (sparse_bound[s]-role_pos)%(bits)
+            unbound_filler_pos = (sparse_bound[s]-role_pos)%(bits_per_slot)
             if P_matrix[m+1][s] == unbound_filler_pos:
                 match +=1
         if n==m:
@@ -148,7 +152,7 @@ net1=Network()
 
 
 #Calculate the array for the input spike generator
-array1 = np.ones(mem_size)*slots*bits
+array1 = np.ones(mem_size) * slots_per_vector * bits_per_slot
 
 # The input spike generator creates pairs of spkies corresponding to contiguous pairs of vectors from the memory that are
 # going to be bound together (i.e., vector_0 & vector_1 then vector_2 and Vector_3 etc.)
@@ -195,22 +199,22 @@ v=0.0
 #  potential decays until the threshold value v<0.0 when it fires to give the required modulus addition. The value of I is 
 # reset to 1.0 using the spike from the P spikemonitorgroup (S1) and the next two vectors are added.
 
-G1 = NeuronGroup(slots, equ1,
-                 threshold='v < 0.0 or v>=1.0',reset=reset1, method='euler')
+G1 = NeuronGroup(slots_per_vector, equ1,
+                 threshold='v < 0.0 or v>=1.0', reset=reset1, method='euler')
 
 G1.v =0.0
 G1.I = 1.0
-G1.tau = 2*bits*ms
+G1.tau = 2 * bits_per_slot * ms
 
 net1.add(G1)
 
 
 S0 = Synapses(P, G1, 'w : 1',on_pre= 'I = (I-1)')
 
-range_array1 = range(0,slots)
+range_array1 = range(0, slots_per_vector)
 for n in range(0,mem_size):
     S0.connect(i=n,j=range_array1)     
-S0.delay = np.reshape(P_matrix,mem_size*slots)*ms
+S0.delay = np.reshape(P_matrix, mem_size * slots_per_vector) * ms
 
 net1.add(S0)
 
@@ -224,7 +228,7 @@ net1.add(SP1)
 
 
 
-G2 = NeuronGroup(slots, equ2, threshold= 'v>=vt', reset=reset2, method='euler')
+G2 = NeuronGroup(slots_per_vector, equ2, threshold='v>=vt', reset=reset2, method='euler')
 
 
 G2.v = 0.0
@@ -237,12 +241,12 @@ S12 = Synapses(G1, G2, 'w : 1', on_pre='v += rand()')
 S12.connect(j='i') 
 net1.add(S12)
 
-G3 = NeuronGroup(slots, equ1, threshold= 'v>1.0 or v<0.0', reset='v=1.0', method='euler')
+G3 = NeuronGroup(slots_per_vector, equ1, threshold='v>1.0 or v<0.0', reset='v=1.0', method='euler')
 
 
 G3.v = 1.1
 G3.I=-1.0
-G3.tau = 2*bits*ms
+G3.tau = 2 * bits_per_slot * ms
 
 net1.add(G3)
 
@@ -275,11 +279,11 @@ net1.run(delta*ms)
 
 # Obtain the sparse vector timings from the SM2 monitor and print the timings so that they can be compared with the theoretical values.
 array2 = np.array([SM3.i,SM3.t/ms])
-sub_array2 = array2[0:2,slots:]
+sub_array2 = array2[0:2, slots_per_vector:]
 print()
 sorted_sub_array2 = sub_array2[:,sub_array2[0].argsort()].astype(int) 
 P1_timing = sorted_sub_array2[1]
-P1_timing = P1_timing[P1_timing >= 2*Num_bound*bits] - 2*Num_bound*bits
+P1_timing = P1_timing[P1_timing >= 2 * Num_bound * bits_per_slot] - 2 * Num_bound * bits_per_slot
 print(P1_timing)
 
 # The following plots output from the different monitors
@@ -336,7 +340,7 @@ show()
 # (e.g. a time delay in slot 0 of the input vector of say 10 will have a corresponding delay of 90 in the corresponding
 #  data_matrix so that if this vector is received then the match condition is an input potential to the neuron at 100)
 
-data_matrix = bits - P_matrix
+data_matrix = bits_per_slot - P_matrix
 
 net2=Network()
 
@@ -345,7 +349,7 @@ print()
 # To pass the sparse vector from Net1 into Net2 we create a SpikeGeneratorGroup that uses the P1_timing from Net1 to generate
 # the sparse bound vector which is the input to NeuronGroup G6 (S6).
 
-P1 = SpikeGeneratorGroup(slots,np.arange(slots), P1_timing*ms)
+P1 = SpikeGeneratorGroup(slots_per_vector, np.arange(slots_per_vector), P1_timing * ms)
 
 net2.add(P1)
 
@@ -374,7 +378,7 @@ v= 0.0
 # NeuronGroup G7 is a recurrent circuit which simply repeates the sparse bound vector from P1 every 3*bits milliseconds 
 # and feeds the output vector into the G6 neurongroup (see S7 below)
 
-G7 = NeuronGroup(slots, equ2,threshold='v>=1.0',reset='v=0.0', method='euler')
+G7 = NeuronGroup(slots_per_vector, equ2, threshold='v>=1.0', reset='v=0.0', method='euler')
 G7.v=0.0
 G7.tau = 0.5*ms
 
@@ -386,7 +390,7 @@ SP17.connect(j='i')
 S77 = Synapses(G7, G7, 'w : 1',on_pre= 'v=1.25')
 S77.connect(j='i')
 #S77.delay = 3*bits*ms
-S77.delay = 2*bits*ms
+S77.delay = 2 * bits_per_slot * ms
 
 net2.add(G7)
 net2.add(SP17)
@@ -395,7 +399,7 @@ net2.add(S77)
 
 
 #Calculate the array for the input spike generator which cycles through the role vectors 0,2,4 etc
-array2 = np.ones(mem_size)*slots*bits
+array2 = np.ones(mem_size) * slots_per_vector * bits_per_slot
 for b in range(0,Num_bound):
     #array2[b*2] = (b*3)*input_delay
     array2[b*2] = (b*2)*input_delay
@@ -415,11 +419,11 @@ net2.add(P2)
 # neuron group stage (G8) to get the best match. 
 
 
-G6 = NeuronGroup(slots, equ3,threshold='v>=1.0',reset=reset3, method='euler',refractory = '2*Num_bound*ms')
+G6 = NeuronGroup(slots_per_vector, equ3, threshold='v>=1.0', reset=reset3, method='euler', refractory ='2*Num_bound*ms')
 
 G6.v =0.0
 G6.I = 1.0
-G6.tau = bits*ms
+G6.tau = bits_per_slot * ms
 
 net2.add(G6)
 
@@ -427,10 +431,10 @@ net2.add(G6)
 
 S5 = Synapses(P2, G6, 'w : 1',on_pre= 'I = (I-1)%2')
 
-range_array2 = range(0,slots)
+range_array2 = range(0, slots_per_vector)
 for n in range(0,mem_size):
     S5.connect(i=n,j=range_array2)     
-S5.delay = np.reshape(P_matrix,mem_size*slots)*ms
+S5.delay = np.reshape(P_matrix, mem_size * slots_per_vector) * ms
 
 net2.add(S5)
 
@@ -464,11 +468,11 @@ range_array3 = range(0,mem_size)
 
 S8 = Synapses(G6, G8, on_pre='v += 1.0')
 
-for n in range(0,slots):
+for n in range(0, slots_per_vector):
     S8.connect(i=n,j=range_array3)  
 
 data_matrix2 = np.transpose(data_matrix) 
-S8.delay = np.reshape(data_matrix2,mem_size*slots)*ms
+S8.delay = np.reshape(data_matrix2, mem_size * slots_per_vector) * ms
 net2.add(S8)
 
 # Create the required monitors
@@ -501,7 +505,7 @@ SM8 = SpikeMonitor(G8)
 
 net2.add(SM8)
 
-net2.run(((2*Num_bound)*bits+3)*ms)
+net2.run(((2*Num_bound) * bits_per_slot + 3) * ms)
 
 # Plot the sparse bound vector
 
@@ -515,7 +519,7 @@ subplot(6,1,1)
 plot(SM7.t/ms, SM7.i,'|')
 xlabel('Time (ms)')
 ylabel('P1 Neuron id')
-plt.ylim(0,slots)
+plt.ylim(0, slots_per_vector)
 
 
 subplot(6,1,2)
