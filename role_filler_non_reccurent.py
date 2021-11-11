@@ -1,4 +1,5 @@
 from brian2 import *
+import brian2tools
 from brian2.equations import refractory
 from brian2.monitors import spikemonitor
 import random
