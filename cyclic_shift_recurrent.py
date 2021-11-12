@@ -44,20 +44,29 @@ def visualise_connectivity(S):
 # operation which compares the unbound vector with all the memory vectors to find the best match.
 # The sparse bound vector resulting from net1 is passed to net2.
 
+show_bound_vecs_slot_detail = False
+
 # Initialise the network parameters
 slots_per_vector = 100  # This is the number of neurons used to represent a vector
 bits_per_slot = 100  # This is the number of bit positions
-mem_size = 1000  # The number of vectors against which the resulting unbound vector is compared
+# slots_per_vector = 16  # This is the number of neurons used to represent a vector
+# bits_per_slot = 32  # This is the number of bit positions
+
+mem_size = 50  # The number of vectors against which the resulting unbound vector is compared
 Num_bound = 5  # The number of vectors that are to be bound
-input_delay = bits_per_slot  # Time delay between adding cyclically shifted vectors to construct the bound vector is set to 'bits' milliseconds.
+
+# Time delay between adding cyclically shifted vectors to construct the bound vector is set to 'bits' milliseconds.
+input_delay = bits_per_slot  # Time between shifted vectors to construct the bound vector, 'bits' milliseconds.
 
 # NB all timings use milliseconds and we can use a random seed if required.
-# np.random.seed(654321)
+# np.random.seed(123321)
 
 y_low = 0  # This is used to select the lowest index of the range of neurons that are to be displayed
 y_high = 3  # This is used to select the highest index of the range of neurons that are to be displayed
 
-delta = (Num_bound + 1) * bits_per_slot  # This determins the time period over which the Brian2 simulation is to be run.
+delta = (Num_bound + 1) * bits_per_slot  # Time period over which the Brian2 simulation is to be run.
+
+
 
 # Generate a random matrix (P_matrix) which represents all of the sparse vectors that are to be used.
 # This matrix has columns equal to the number of slots in each vector with the number of rows equal to the memory size (mem_size)
@@ -77,21 +86,20 @@ for n in range(0, Num_bound):
     print(np.roll(P_matrix[n], n))
 
 # Create sparse bound vector (s_bound) of zeros
-s_bound = []
-for s in range(0, slots_per_vector):
-    s_bound.append(np.zeros(bits_per_slot))
-print()
+# Init sparse bound vector (s_bound) with zeros
+s_bound = np.zeros((slots_per_vector, bits_per_slot))
+
 # Create sparse representation of the bound vector
 # - i.e. read the bit position for the shifted vector from the rows of the P_matrix
 # and add the vectors together to get s_bound
 for n in range(0, Num_bound):
     for s in range(0, slots_per_vector):
-        # b = np.roll(P_matrix[n],Num_bound-1-n)[s]
-        b = np.roll(P_matrix[n], n)[s]
-        s_bound[s][b] += 1
+        # elementwise cyclic-shift of input vector by bind-order position 'n'
+        b = np.roll(P_matrix[n], n)[s]  # Get the posn. of the set bit in the adjacent ('right-shifted') slot.
+        s_bound[s][b] += 1  # Add a '1' to the output/bound vector in the current (un-shifted) slot.
 
-# make s_bound sparse using the argmax function - NB this will take the first bit position if
-# non of the bits adds to greater than 1.
+# make s_bound sparse using the argmax function.
+# NB: Argmax takes the lowest index if there is more than one bit posn with equal to max_value.
 sparse_bound = []
 for s in range(0, slots_per_vector):
     sparse_bound.append(np.argmax(s_bound[s]))
@@ -104,21 +112,18 @@ print()
 # number of slots that have matching bit positions. This gives the number of spikes that should line up
 # in the clean up memory operation.
 
+results = None
+miss_matches = []
 min_match = slots_per_vector
-for n in range(0, Num_bound):
-    for m in range(0, Num_bound):
-        match = 0
-        for s in range(0, slots_per_vector):
-            #            if P_matrix[n][s] == np.roll(sparse_bound,-(Num_bound-1-m))[s]:
-            if P_matrix[n][s] == np.roll(sparse_bound, -m)[s]:
-                match += 1
-        if n == m:
-            print(n, m, match)
-            if match <= min_match:
-                min_match = match
-        # When we print the maximum value of match should occur when m=n
+for nn in range(0, Num_bound):
+    results = []
+    for test_vec in P_matrix:
+        reverse_shifted_vec = np.roll(sparse_bound, -nn)
+        unbound_vals = np.array([reverse_shifted_vec[ss] for ss in range(0, slots_per_vector)])
+        match = np.count_nonzero(unbound_vals == test_vec)
+        results.append(match)
 
-print('Min_match=', min_match)
+    print(f"source_vec_idx[{nn}], best match idx at vec posn[{np.argmax(results):2d}]:  {results}")
 
 # ---------------------------------------------------------------------------------------------------------------
 
