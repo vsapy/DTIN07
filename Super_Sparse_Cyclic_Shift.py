@@ -46,23 +46,23 @@ def visualise_connectivity(S):
 # The sparse bound vector resulting from net1 is passed to net2.
 
 # Initialise the network parameters
-slots = 500  # This is the number of neurons used to represent a vector
-bits = 512 # This is the number of bit positions
+slots_per_vector = 500  # This is the number of neurons used to represent a vector
+bits_per_slot = 512 # This is the number of bit positions
 mem_size = 1000 # The number of vectors against which the resulting unbound vector is compared
 Num_bound = 20 # The number of vectors that are to be bound
-input_delay = bits # Time delay between adding cyclically shifted vectors to construct the bound vector is set to 'bits' milliseconds.
+input_delay = bits_per_slot # Time delay between adding cyclically shifted vectors to construct the bound vector is set to 'bits_per_slot' milliseconds.
 
 #NB all timings use milliseconds and we can use a random seed if required.
 #np.random.seed(654321)
 
 y_low=0 # This is used to select the lowest index of the range of neurons that are to be displayed
-y_high=slots-1 # This is used to select the highest index of the range of neurons that are to be displayed
+y_high=slots_per_vector-1 # This is used to select the highest index of the range of neurons that are to be displayed
 
-delta = (Num_bound)*bits  #This determins the time period over which the Brian2 simulation is to be run.
+delta = (Num_bound)*bits_per_slot  #This determins the time period over which the Brian2 simulation is to be run.
 
 # Generate a random matrix (P_matrix) which represents all of the sparse vectors that are to be used.
 # This matrix has columns equal to the number of slots in each vector with the number of rows equal to the memory size (mem_size)
-P_matrix = np.random.randint(0, bits, size=(mem_size,slots))
+P_matrix = np.random.randint(0, bits_per_slot, size=(mem_size,slots_per_vector))
 #print(P_matrix)
 '''
 for n in range(0,Num_bound):
@@ -77,7 +77,7 @@ net1=Network()
 #We first create an array of time delays which will be used to select the first Num_bound vectors from 
 # the P_matrix with a time delay (input_delay) between each vector.
 
-array1 = np.ones(mem_size)*slots*bits
+array1 = np.ones(mem_size)*slots_per_vector*bits_per_slot
 
 for b in range(0,Num_bound):
     array1[b] = (Num_bound-b-1)*input_delay
@@ -108,8 +108,8 @@ tau : second
 # sequence of spikes from the 'P' spike generator group. A 'P' spike excites an axon which is connected to all the G1 neurons 
 # (SP1.connect).  The output from the group is recursively fed to the next neuron to provide the cyclic shift.  This then gives two 
 # possible spikes in the next cycle. Using the refractory property of the neuron only the first of these generates a spike.
-G1 = NeuronGroup(slots, equ1,
-                 threshold='v >= 0.5', reset='v=0.0', method='euler',refractory = 't%(bits*ms)')
+G1 = NeuronGroup(slots_per_vector, equ1,
+                 threshold='v >= 0.5', reset='v=0.0', method='euler',refractory = 't%(bits_per_slot*ms)')
 
 G1.v = 0.0
 G1.tau = 1.0*ms
@@ -117,10 +117,10 @@ G1.tau = 1.0*ms
 
 net1.add(G1)
 SP1 = Synapses(P, G1, 'w : 1', on_pre='v = 1.0' )
-range_array1 = range(0,slots)
+range_array1 = range(0,slots_per_vector)
 for n in range(0,mem_size):
     SP1.connect(i=n,j=range_array1)     
-SP1.delay = np.reshape(P_matrix,mem_size*slots)*ms
+SP1.delay = np.reshape(P_matrix,mem_size*slots_per_vector)*ms
 
 net1.add(SP1)
 
@@ -128,8 +128,8 @@ net1.add(SP1)
 # feeds to the input of neuron_1 etc. Because Brian2 introduces a time delay of 0.1ms when performing this operation the delay for this
 # feedback is the input_delay minus 0.1ms (S3.delay)
 S11 = Synapses(G1, G1, 'w : 1', on_pre='v +=1.0' )
-for n in range(0,slots):
-    S11.connect(i=n,j=(n+1)%(slots)) 
+for n in range(0,slots_per_vector):
+    S11.connect(i=n,j=(n+1)%(slots_per_vector))
 S11.delay = (input_delay-0.1)*ms
 
 net1.add(S11)
@@ -153,7 +153,7 @@ net1.run(delta*ms)
 
 
 array2 = np.array([SM1.i,SM1.t/ms])
-sub_array2 = array2[0:2,slots:]
+sub_array2 = array2[0:2,slots_per_vector:]
 print()
 print(sub_array2)
 sorted_sub_array2 = sub_array2[:,sub_array2[0].argsort()].astype(int) 
@@ -161,7 +161,7 @@ print()
 print(sorted_sub_array2)
 print()
 
-P1_timing = sorted_sub_array2[:,sorted_sub_array2[1,:]>=bits*(Num_bound-1)][1] - bits*(Num_bound-1)
+P1_timing = sorted_sub_array2[:,sorted_sub_array2[1,:]>=bits_per_slot*(Num_bound-1)][1] - bits_per_slot*(Num_bound-1)
 print(len(P1_timing))
 print(P1_timing)
 
@@ -187,14 +187,14 @@ plt.ylim(y_low,y_high)
 
 show()
 
-data_matrix = bits - P_matrix
+data_matrix = bits_per_slot - P_matrix
 
 net2=Network()
 
 
 # To pass the sparse vector from Net1 into Net2 we create a SpikeGeneratorGroup  that uses the P1_timing from Net1 to generate
 # the sparse bound vector which is the input to NeuronGroup G6 (S6).
-P1 = SpikeGeneratorGroup(slots,np.arange(slots), P1_timing*ms)
+P1 = SpikeGeneratorGroup(slots_per_vector,np.arange(slots_per_vector), P1_timing*ms)
 
 net2.add(P1)
 
@@ -205,7 +205,7 @@ ts:second
 '''
 # The G2 NeuronGroup performs the recurrent unbinding of the bound sparse vector in this case Neuron_1 connects to Neuron_0 etc. (S22.connect)
 # Again the recurrent delay depends on the number of bit positions.
-G2 = NeuronGroup(slots, equ2, threshold='v >= 0.5', reset='v=0.0', method='euler')
+G2 = NeuronGroup(slots_per_vector, equ2, threshold='v >= 0.5', reset='v=0.0', method='euler')
 G2.v = 0.0
 G2.tau = 1*ms
 
@@ -219,8 +219,8 @@ net2.add(SP2)
 # Recursively unbind with a delay of 'input_delay' between unbound vectors
 
 S22 = Synapses(G2, G2, 'w : 1', on_pre='v = 1.0')
-for n in range(0,slots):
-    S22.connect(i=n,j=(n-1)%slots) 
+for n in range(0,slots_per_vector):
+    S22.connect(i=n,j=(n-1)%slots_per_vector)
 
 S22.delay = (1*input_delay)*ms
 
@@ -242,11 +242,11 @@ net2.add(G3)
 range_array1 = range(0,mem_size)
 S23 = Synapses(G2, G3, on_pre='v += 1.0')
 
-for n in range(0,slots):
+for n in range(0,slots_per_vector):
     S23.connect(i=n,j=range_array1)  
 
 data_matrix2 = np.transpose(data_matrix)  
-S23.delay = np.reshape(data_matrix2,mem_size*slots)*ms
+S23.delay = np.reshape(data_matrix2,mem_size*slots_per_vector)*ms
 
 net2.add(S23)
 
@@ -269,7 +269,7 @@ net2.add(M3)
 
 #Run Network2 for delta milliseconds
 
-net2.run((delta+bits)*ms)
+net2.run((delta+bits_per_slot)*ms)
 
 # Plot the sparse bound vector
 
