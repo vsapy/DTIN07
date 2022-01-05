@@ -46,22 +46,22 @@ def visualise_connectivity(S):
 
 # Initialise the network parameters
 slots_per_vector = 500  # This is the number of neurons used to represent a vector
-bits_per_slots = 512  # This is the number of bit positions
+bits_per_slot = 512  # This is the number of bit positions
 mem_size = 1000  # The number of vectors against which the resulting unbound vector is compared
 Num_bound = 20  # The number of vectors that are to be bound
-input_delay = bits_per_slots  # Time delay between adding cyclically shifted vectors to construct the bound vector is set to 'bits' milliseconds.
+input_delay = bits_per_slot  # Time delay between adding cyclically shifted vectors to construct the bound vector is set to 'bits' milliseconds.
 
 # NB all timings use milliseconds and we can use a random seed if required.
-# np.random.seed(654321)
+# np.random.seed(123321)
 
 y_low = 0  # This is used to select the lowest index of the range of neurons that are to be displayed
 y_high = slots_per_vector - 1  # This is used to select the highest index of the range of neurons that are to be displayed
 
-delta = (Num_bound) * bits_per_slots  # This determins the time period over which the Brian2 simulation is to be run.
+delta = (Num_bound) * bits_per_slot  # This determins the time period over which the Brian2 simulation is to be run.
 
 # Generate a random matrix (P_matrix) which represents all of the sparse vectors that are to be used.
 # This matrix has columns equal to the number of slots in each vector with the number of rows equal to the memory size (mem_size)
-P_matrix = np.random.randint(0, bits_per_slots, size=(mem_size, slots_per_vector))
+P_matrix = np.random.randint(0, bits_per_slot, size=(mem_size, slots_per_vector))
 # print(P_matrix)
 '''
 for n in range(0,Num_bound):
@@ -76,7 +76,7 @@ net1 = Network()
 # We first create an array of time delays which will be used to select the first Num_bound vectors from
 # the P_matrix with a time delay (input_delay) between each vector.
 
-array1 = np.ones(mem_size) * slots_per_vector * bits_per_slots
+array1 = np.ones(mem_size) * slots_per_vector * bits_per_slot
 
 for b in range(0, Num_bound):
     array1[b] = (Num_bound - b - 1) * input_delay
@@ -156,7 +156,7 @@ print()
 print(sorted_sub_array2)
 print()
 
-P1_timing = sorted_sub_array2[:, sorted_sub_array2[1, :] >= bits_per_slots * (Num_bound - 1)][1] - bits_per_slots * (
+P1_timing = sorted_sub_array2[:, sorted_sub_array2[1, :] >= bits_per_slot * (Num_bound - 1)][1] - bits_per_slot * (
             Num_bound - 1)
 print(len(P1_timing))
 print(P1_timing)
@@ -181,7 +181,7 @@ plt.ylim(y_low, y_high)
 
 show()
 
-data_matrix = bits_per_slots - P_matrix
+data_matrix = bits_per_slot - P_matrix
 
 net2 = Network()
 
@@ -261,7 +261,7 @@ net2.add(M3)
 
 # Run Network2 for delta milliseconds
 
-net2.run((delta + bits_per_slots) * ms)
+net2.run((delta + bits_per_slot) * ms)
 
 # Plot the sparse bound vector
 
