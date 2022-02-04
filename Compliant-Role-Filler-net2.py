@@ -106,7 +106,7 @@ for n in range(0,2*Num_bound,2):
 
 # print the cyclically shifted version of the vectors that are to be bound
 for n in range(0, Num_bound):
-    fancy_print_vector(np.roll(P_matrix[n], n))
+    print(np.roll(P_matrix[n], n))
 
 # Create sparse representation of the bound vector
 # Init sparse bound vector (s_bound) with zeros
