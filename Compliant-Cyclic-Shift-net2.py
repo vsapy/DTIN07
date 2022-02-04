@@ -98,15 +98,16 @@ for n in range(0, Num_bound):
         b = np.roll(P_matrix[n], n)[s]  # Get the posn. of the set bit in the adjacent ('right-shifted') slot.
         s_bound[s][b] += 1  # Add a '1' to the output/bound vector in the current (un-shifted) slot.
 
-# make s_bound sparse using the argmax function.
-# NB: Argmax takes the lowest index if there is more than one bit posn with equal to max_value.
-sparse_bound = []
-for s in range(0, slots_per_vector):
-    sparse_bound.append(np.argmax(s_bound[s]))
+# Make s_bound sparse using the argmax function which finds the bit position with the highest random value.
+np.set_printoptions(threshold=24)
+np.set_printoptions(edgeitems=11)
+print("\nResultant Sparse vector, value indicates 'SET' bit position in each slot. "
+      "\n(Note, a value of '0' means bit zero is set).\n")
 
-print()
+sparse_bound = np.array([np.argmax(s_bound[s]) for s in range(0,slots_per_vector)])
 print(sparse_bound)
 print()
+np.set_printoptions()
 
 # The following unbinds the sparse_bound vector and compare with each of the vectors in the P_matrix couting the
 # number of slots that have matching bit positions. This gives the number of spikes that should line up

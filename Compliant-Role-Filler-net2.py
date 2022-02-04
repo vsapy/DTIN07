@@ -29,6 +29,20 @@ def visualise_connectivity(S):
     ylabel('Target neuron index')
     show()
 
+def fancy_print_vector(v):
+    if v.shape[1] > 24:
+        # Fancy formating for slots_per_vector that are longer than 24 bits_per_slot - shows start and end of slot values.
+        for kk in range(v.shape[0]):
+            print(f"slot[{kk:2d}]:"
+                  f"{((v[kk]).astype(int))[:12]} ... {((v[kk]).astype(int))[-12:]}, "
+                  f"Argmax bit pos=[{np.argmax(v[kk])}]")
+    else:
+        for kk in range(v.shape[0]):
+            print(f"slot[{kk:2d}]:"
+                  f"{((v[kk]).astype(int))}, "
+                  f"Argmax bit pos=[{np.argmax(v[kk])}]")
+
+
 #This code uses the Brian2 neuromorphic simulator code to implement
 #  a version of role/filler binding and unbinding based on the 
 # paper :High-Dimensional Computing with Sparse Vectors" by Laiho et al 2016. 
@@ -49,12 +63,10 @@ def visualise_connectivity(S):
 # Init base vars
 show_bound_vecs_slot_detail = True
 
-# slots_per_vector = 100 # This is the number of neurons used to represent a vector
-# bits_per_slot = 100  # This is the number of bit positions
-slots_per_vector = 512 # This is the number of neurons used to represent a vector
-bits_per_slot = 32 # This is the number of bit positions
-mem_size = 24  # The number of vectors against which the resulting unbound vector is compared
-Num_bound = 8  # The number of vectors that are to be bound
+slots_per_vector = 100 # This is the number of neurons used to represent a vector
+bits_per_slot = 100  # This is the number of bit positions
+mem_size = 500  # The number of vectors against which the resulting unbound vector is compared
+Num_bound = 5  # The number of vectors that are to be bound
 input_delay = bits_per_slot  # Time delay between adding cyclically shifted vectors to construct the bound vector is set to 'bits' milliseconds.
 
 # NB all timings use milliseconds and we can use a random seed if required.
@@ -86,12 +98,15 @@ for n in range(0,2*Num_bound,2):
 
 #--------------------------------------------------------------------------------------------------------------
 #
-# Theoretical calc
+# Empirical calc
 #
 # This section of the code computes the theoretical values for the sparse vector (which can then be compared with
 # the output of the net1 neuromorphic circuit. It then computes the expected number of bits_per_slot that will align
 # in the clean-up memory operation (which can then be compared with the net2 neuromorphic circuit output).
 
+# print the cyclically shifted version of the vectors that are to be bound
+for n in range(0, Num_bound):
+    fancy_print_vector(np.roll(P_matrix[n], n))
 
 # Create sparse representation of the bound vector
 # Init sparse bound vector (s_bound) with zeros
@@ -114,6 +129,7 @@ for n in range(0, Num_bound):
 if show_bound_vecs_slot_detail:
     np.set_printoptions(formatter={'int':lambda x: f"{x:2d}"})
     print()
+    fancy_print_vector(s_bound)
     if bits_per_slot > 24:
         # Fancy formating for slots_per_vector that are longer than 24 bits_per_slot - shows start and end of slot values.
         for kk in range(slots_per_vector):
@@ -166,12 +182,12 @@ for nn in range(0, len(Role_matrix)):
     hd = max(results) / slots_per_vector
     # print(nn, end=' ')
     if hd > hd_threshold:
-        print(f"Role_vec_idx[{nn}], Val_match_idx[{win_indx:2d}]:  {results}")
+        print(f"Role_vec_idx[{nn}], Val_match_idx[{win_indx:2d}]:  {np.array(results)}")
         if max_count <= min_match:
             min_match = max_count
     else:
         # store the a failed match
-        miss_matches.append((nn, win_indx, results))
+        miss_matches.append((nn, win_indx, np.array(results)))
 
     results_set.append(results)
 print()
